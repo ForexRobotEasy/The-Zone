@@ -1,0 +1,136 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                               The Zone           |
+//|                            https://forexroboteasy.com            |
+//|                                      Forex Robot Easy Team        |
+//+------------------------------------------------------------------+
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Timeseries\Series.mqh>
+#include <Indicators\MA.mqh>
+#include <Indicators\BollingerBands.mqh>
+#include <Indicators\ADX.mqh>
+#include <Indicators\RSI.mqh>
+
+// Define input parameters
+input ENUM_MA_METHOD MA_Method = MODE_SMA; // Moving Average method
+input int MA_Period = 14; // Moving Average period
+input int BB_Period = 20; // Bollinger Bands period
+input double BB_Deviation = 2.0; // Bollinger Bands deviation
+input int ADX_Period = 14; // ADX period
+input int RSI_Period = 14; // RSI period
+input int RSI_OversoldLevel = 30; // RSI oversold level
+input int RSI_OverboughtLevel = 70; // RSI overbought level
+
+// Define global variables
+CTrade trade; // Trade object
+CMA ma; // Moving Average object
+CBollingerBands bb; // Bollinger Bands object
+CADX adx; // ADX object
+CRSI rsi; // RSI object
+
+//+------------------------------------------------------------------+
+//| Custom entry signals for Forex trading                            |
+//+------------------------------------------------------------------+
+bool CustomEntrySignals()
+{
+    // Define your custom entry signals here
+    // Example: Buy when MA crosses above BB upper band and ADX is above threshold
+    if (ma.iCustom(_Symbol, _Period, MA_Method, MA_Period, 0) > bb.iBands(_Symbol, _Period, BB_Period, BB_Deviation, PRICE_CLOSE, MODE_UPPER, 0) &&
+        adx.iADX(_Symbol, _Period, ADX_Period, PRICE_CLOSE, 0) > 25)
+    {
+        trade.Buy();
+        return true;
+    }
+    // Example: Sell when RSI crosses below oversold level
+    else if (rsi.iRSI(_Symbol, _Period, RSI_Period, PRICE_CLOSE, 0) < RSI_OversoldLevel)
+    {
+        trade.Sell();
+        return true;
+    }
+
+    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Hedging Expert Advisor (EA) functionality                         |
+//| to optimize Forex strategies using stop orders                    |
+//+------------------------------------------------------------------+
+void HedgeEA()
+{
+    // Define your hedging strategy here
+    // Example: Place a Buy stop order above the current price
+    double price = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+    double stopOrderPrice = price + 10 * _Point;
+    trade.BuyStop(stopOrderPrice, 0.1, stopOrderPrice - 100 * _Point, stopOrderPrice + 100 * _Point, 'Hedge Buy');
+}
+
+//+------------------------------------------------------------------+
+//| Customizable entry signals using indicators                       |
+//+------------------------------------------------------------------+
+bool IndicatorEntrySignals()
+{
+    // Example: Use RSI as entry signal
+    if (rsi.iRSI(_Symbol, _Period, RSI_Period, PRICE_CLOSE, 0) > RSI_OverboughtLevel)
+    {
+        trade.Sell();
+        return true;
+    }
+    return false;
+}
+
+//+------------------------------------------------------------------+
+//| The Zone EA main function                                         |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Check if custom entry signals are enabled
+    if (CustomEntrySignals())
+        return;
+
+    // Check if Hedge EA functionality is enabled
+    if (HedgeEA())
+        return;
+
+    // Check if indicator entry signals are enabled
+    if (IndicatorEntrySignals())
+        return;
+}
+
+//+------------------------------------------------------------------+
+//| The Zone EA initialization function                               |
+//+------------------------------------------------------------------+
+void OnInit()
+{
+    // Initialize trade object
+    trade.SetExpertMagicNumber(123456);
+
+    // Initialize indicators
+    ma.Create(_Symbol, _Period, MA_Period, MA_Method);
+    bb.Create(_Symbol, _Period, BB_Period, BB_Deviation, PRICE_CLOSE);
+    adx.Create(_Symbol, _Period, ADX_Period, PRICE_CLOSE);
+    rsi.Create(_Symbol, _Period, RSI_Period, PRICE_CLOSE);
+}
+
+//+------------------------------------------------------------------+
+//| The Zone EA deinitialization function                             |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    // Cleanup resources
+    trade.ResetLastError();
+    ma.Destroy();
+    bb.Destroy();
+    adx.Destroy();
+    rsi.Destroy();
+}
+
+//+------------------------------------------------------------------+
+//| The Zone EA start function                                        |
+//+------------------------------------------------------------------+
+void OnStart()
+{
+    // Main entry point
+    OnTick();
+}
